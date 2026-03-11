@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>深圳国际美术馆 - 场地建设验收查验清单</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <style>
+        * {
+            touch-action: manipulation;
+        }
+        html, body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+        body { background-color: #f8fafc; }
+        .form-group { margin-bottom: 1.5rem; }
+        input, textarea, select {
+            -webkit-appearance: none;
+            border-radius: 0.5rem !important;
+        }
+        .upload-area { transition: all 0.3s ease; }
+        .upload-area.dragover { background-color: #e0f7fa; border-color: #00acc1; }
+        .image-preview { position: relative; overflow: hidden; }
+        .image-preview .delete-btn { position: absolute; top: 0.5rem; right: 0.5rem; opacity: 0; transition: opacity 0.3s ease; }
+        .image-preview:hover .delete-btn, .image-preview:active .delete-btn { opacity: 1; }
+        .hidden { display: none !important; }
+        .loading { opacity: 0.6; pointer-events: none; }
+        .btn-min {
+            min-height: 48px;
+            min-width: 48px;
+        }
+    </style>
+</head>
+<body>
+    <!-- 登录验证页 -->
+    <div id="auth-page" class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-xl max-w-md w-full p-6">
+            <div class="text-center mb-8">
+                <h1 class="text-2xl font-bold text-gray-800 mb-2">深圳国际美术馆</h1>
+                <p class="text-gray-500">场地建设验收查验系统</p>
+            </div>
+            <form id="auth-form" class="space-y-6">
+                <div class="form-group">
+                    <label for="username" class="block text-sm font-medium text-gray-700 mb-1">查验人姓名</label>
+                    <input type="text" id="username" name="username" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                </div>
+                <div class="form-group">
+                    <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">联系电话</label>
+                    <input type="tel" id="phone" name="phone" required pattern="[0-9]{11}" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                </div>
+                <button type="submit" class="w-full btn-min bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition shadow-md">
+                    进入查验系统
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- 查验清单页 -->
+    <div id="checklist-page" class="hidden min-h-screen p-3 md:p-8 pb-20">
+        <div class="max-w-6xl mx-auto">
+            <!-- 头部 -->
+            <div class="bg-white rounded-xl shadow-md p-4 md:p-6 mb-4">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div>
+                        <h1 class="text-xl md:text-2xl font-bold text-gray-800 mb-1">深圳国际美术馆验收清单</h1>
+                        <div class="text-sm text-gray-500">
+                            查验人：<span id="display-name" class="font-medium"></span> | 
+                            查验日期：<span id="check-date" class="font-medium"></span>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button id="export-btn" class="btn-min flex-1 md:flex-none bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg transition">
+                            <i class="fa fa-download mr-1"></i> 导出我的
+                        </button>
+                        <button id="export-all-btn" class="hidden btn-min flex-1 md:flex-none bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg transition">
+                            <i class="fa fa-download mr-1"></i> 导出全部
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <!-- 问题填报 -->
+                <div class="lg:col-span-2 order-2 lg:order-1">
+                    <div class="bg-white rounded-xl shadow-md p-4 md:p-6">
+                        <h2 class="text-xl font-bold text-gray-800 mb-4">问题发现与记录</h2>
+                        <form id="issue-form" class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="form-group">
+                                    <label for="area" class="block text-sm font-medium text-gray-700 mb-1">问题所在区域</label>
+                                    <select id="area" name="area" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                                        <option value="">请选择区域</option>
+                                        <option value="lobby">大厅</option>
+                                        <option value="corridor">走廊</option>
+                                        <option value="restroom">卫生间</option>
+                                        <option value="elevator">电梯厅</option>
+                                        <option value="staircase">楼梯间</option>
+                                        <option value="exhibition1">1号展厅</option>
+                                        <option value="exhibition2">2号展厅</option>
+                                        <option value="exhibition3">3号展厅</option>
+                                        <option value="exhibition4">4号展厅</option>
+                                        <option value="exhibition5">5号展厅</option>
+                                        <option value="office">办公区</option>
+                                        <option value="meeting">会议室</option>
+                                        <option value="storage">库房</option>
+                                        <option value="cafe">咖啡厅</option>
+                                        <option value="shop">文创商店</option>
+                                        <option value="outdoor">户外广场</option>
+                                        <option value="parking">停车场</option>
+                                        <option value="entrance">主入口</option>
+                                        <option value="emergency">应急通道</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="category" class="block text-sm font-medium text-gray-700 mb-1">问题类别</label>
+                                    <select id="category" name="category" required class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                                        <option value="">请选择问题类别</option>
+                                        <option value="structure">结构工程</option>
+                                        <option value="electrical">电气工程</option>
+                                        <option value="plumbing">给排水工程</option>
+                                        <option value="hvac">暖通空调工程</option>
+                                        <option value="fire">消防工程</option>
+                                        <option value="decor">装饰装修工程</option>
+                                        <option value="facility">设备设施</option>
+                                        <option value="security">安防系统</option>
+                                        <option value="environment">环境与绿化</option>
+                                        <option value="other">其他</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-1">问题优先级</label>
+                                <div class="space-y-2">
+                                    <label class="flex items-center py-1">
+                                        <input type="radio" name="priority" value="high" checked class="mr-2 w-5 h-5">
+                                        <span class="text-red-700 font-medium">高优先级（立即整改）</span>
+                                    </label>
+                                    <label class="flex items-center py-1">
+                                        <input type="radio" name="priority" value="medium" class="mr-2 w-5 h-5">
+                                        <span class="text-yellow-700 font-medium">中优先级（限期整改）</span>
+                                    </label>
+                                    <label class="flex items-center py-1">
+                                        <input type="radio" name="priority" value="low" class="mr-2 w-5 h-5">
+                                        <span class="text-green-700 font-medium">低优先级（后续处理）</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="description" class="block text-sm font-medium text-gray-700 mb-1">问题详细描述</label>
+                                <textarea id="description" name="description" rows="4" required placeholder="请详细描述问题位置、表现、影响范围..." class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition"></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">问题照片上传（最多3张）</label>
+                                <div id="upload-area" class="upload-area border-2 border-dashed border-gray-300 rounded-lg p-4 text-center cursor-pointer hover:border-blue-500 transition">
+                                    <input type="file" id="file-input" accept="image/jpeg,image/png" multiple class="hidden">
+                                    <i class="fa fa-cloud-upload text-3xl text-gray-400 mb-2"></i>
+                                    <p class="text-gray-600">点击上传照片</p>
+                                    <p class="text-xs text-gray-400 mt-1">支持JPG、PNG，单张不超过5MB</p>
+                                </div>
+                                <div id="image-preview-container" class="hidden grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4"></div>
+                            </div>
+
+                            <button type="submit" id="submit-btn" class="w-full btn-min bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 rounded-lg transition shadow-md">
+                                保存问题记录
+                            </button>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- 已记录问题 -->
+                <div class="lg:col-span-1 order-1 lg:order-2">
+                    <div class="bg-white rounded-xl shadow-md p-4 md:p-6 h-[50vh] lg:h-[80vh] flex flex-col">
+                        <h2 class="text-xl font-bold text-gray-800 mb-4">我的问题记录</h2>
+                        <div id="issues-list" class="space-y-4 overflow-y-auto pr-2 flex-1"></div>
+                        <div id="empty-state" class="text-center py-12 text-gray-400">
+                            <i class="fa fa-clipboard text-4xl mb-2"></i>
+                            <p>暂无问题记录，开始记录您发现的问题</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 成功弹窗 -->
+    <div id="success-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-xl max-w-md w-full p-6">
+            <div class="text-center">
+                <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fa fa-check text-green-600 text-3xl"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">问题记录保存成功</h3>
+                <p class="text-gray-500 mb-6">您发现的问题已成功保存到查验清单中</p>
+                <button id="close-modal-btn" class="btn-min bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg transition">
+                    继续查验
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 加载提示 -->
+    <div id="loading-modal" class="hidden fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
+        <div class="bg-white p-6 rounded-xl flex items-center gap-3">
+            <i class="fa fa-spinner fa-spin text-blue-600 text-2xl"></i>
+            <span class="text-gray-700 font-medium">处理中，请稍候...</span>
+        </div>
+    </div>
+
+<script>
+// 页面元素
+const authPage = document.getElementById('auth-page');
+const checklistPage = document.getElementById('checklist-page');
+const authForm = document.getElementById('auth-form');
+const issueForm = document.getElementById('issue-form');
+const uploadArea = document.getElementById('upload-area');
+const fileInput = document.getElementById('file-input');
+const imagePreviewContainer = document.getElementById('image-preview-container');
+const issuesList = document.getElementById('issues-list');
+const emptyState = document.getElementById('empty-state');
+const successModal = document.getElementById('success-modal');
+const closeModalBtn = document.getElementById('close-modal-btn');
+const exportBtn = document.getElementById('export-btn');
+const exportAllBtn = document.getElementById('export-all-btn');
+const loadingModal = document.getElementById('loading-modal');
+const submitBtn = document.getElementById('submit-btn');
+
+// 全局变量
+let currentUser = null;
+let currentDate = null;
+let uploadedImages = [];
+let issues = [];
+// 👇 这里改成管理员自己的手机号，只有这个手机号能导出全部数据
+const ADMIN_PHONE = "这里换成你自己的手机号";
+
+// 初始化
+document.addEventListener('DOMContentLoaded', () => {
+    // 设置当前日期
+    currentDate = new Date().toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' });
+    document.getElementById('check-date').textContent = currentDate;
+
+    // 身份验证表单提交
+    authForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(authForm);
+        const username = formData.get('username');
+        const phone = formData.get('phone').trim();
+
+        currentUser = { username, phone };
+        document.getElementById('display-name').textContent = username;
+        
+        // 如果是管理员，显示导出全部按钮
+        if (phone === ADMIN_PHONE) {
+            exportAllBtn.classList.remove('hidden');
+        }
+
+        // 切换到查验页面
+        authPage.classList.add('hidden');
+        checklistPage.classList.remove('hidden');
+
+        // 加载当前用户的问题
+        await loadIssues();
+    });
+
+    // 问题表单提交
+    issueForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        showLoading();
+
+        const formData = new FormData(issueForm);
+        const issue = {
+            username: currentUser.username,
+            phone: currentUser.phone,
+            date: currentDate,
+            area: formData.get('area'),
+            category: formData.get('category'),
+            priority: formData.get('priority'),
+            description: formData.get('description'),
+            images: [...uploadedImages],
+            timestamp: new Date().toLocaleString('zh-CN')
+        };
+
+        try {
+            const res = await fetch('/api/add-issue', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(issue)
+            });
+            const result = await res.json();
+            if (result.success) {
+                await loadIssues();
+                resetForm();
+                successModal.classList.remove('hidden');
+            } else {
+                alert('保存失败：' + (result.message || '未知错误'));
+            }
+        } catch (err) {
+            alert('保存失败：' + err.message);
+        } finally {
+            hideLoading();
+        }
+    });
+
+    // 文件上传区域点击事件
+    uploadArea.addEventListener('click', () => {
+        fileInput.click();
+    });
+
+    // 拖拽上传（移动端不影响，点击依然可用）
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        uploadArea.addEventListener(eventName, preventDefaults, false);
+        document.body.addEventListener(eventName, preventDefaults, false);
+    });
+
+    function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    ['dragenter', 'dragover'].forEach(eventName => {
+        uploadArea.addEventListener(eventName, highlight, false);
+    });
+
+    ['dragleave', 'drop'].forEach(eventName => {
+        uploadArea.addEventListener(eventName, unhighlight, false);
+    });
+
+    function highlight() {
+        uploadArea.classList.add('dragover');
+    }
+
+    function unhighlight() {
+        uploadArea.classList.remove('dragover');
+    }
+
+    uploadArea.addEventListener('drop', handleDrop, false);
+
+    function handleDrop(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        handleFiles(files);
+    }
+
+    // 文件选择（移动端拍照/选图正常支持）
+    fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+    });
+
+    // 处理上传的文件
+    function handleFiles(files) {
+        if (files.length === 0) return;
+        // 检查总数量
+        if (uploadedImages.length + files.length > 3) {
+            alert('最多只能上传3张图片');
+            return;
+        }
+        Array.from(files).forEach(file => {
+            // 检查文件类型
+            if (!file.type.match('image/jpeg') && !file.type.match('image/png')) {
+                alert('仅支持JPG和PNG格式图片');
+                return;
+            }
+            // 检查文件大小
+            if (file.size > 5 * 1024 * 1024) {
+                alert('单张图片大小不能超过5MB');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const imageData = {
+                    id: Date.now() + Math.random(),
+                    name: file.name,
+                    size: file.size,
+                    type: file.type,
+                    url: e.target.result
+                };
+                uploadedImages.push(imageData);
+                renderImagePreviews();
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // 渲染图片预览
+    function renderImagePreviews() {
+        if (uploadedImages.length === 0) {
+            imagePreviewContainer.classList.add('hidden');
+            return;
+        }
+        imagePreviewContainer.classList.remove('hidden');
+        imagePreviewContainer.innerHTML = '';
+        uploadedImages.forEach(image => {
+            const preview = document.createElement('div');
+            preview.className = 'image-preview rounded-lg overflow-hidden shadow-md relative';
+            preview.innerHTML = `
+                <img src="${image.url}" alt="${image.name}" class="w-full h-40 sm:h-48 object-cover">
+                <button class="delete-btn btn-min w-8 h-8 flex items-center justify-center bg-red-600 hover:bg-red-700 text-white rounded-full transition duration-300" data-id="${image.id}">
+                    <i class="fa fa-times"></i>
+                </button>
+                <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2 text-white text-xs">
+                    ${image.name} (${formatFileSize(image.size)})
+                </div>
+            `;
+            // 删除图片
+            preview.querySelector('.delete-btn').addEventListener('click', () => {
+                uploadedImages = uploadedImages.filter(img => img.id !== image.id);
+                renderImagePreviews();
+            });
+            imagePreviewContainer.appendChild(preview);
+        });
+    }
+
+    // 重置表单
+    function resetForm() {
+        issueForm.reset();
+        uploadedImages = [];
+        renderImagePreviews();
+    }
+
+    // 加载问题列表
+    async function loadIssues() {
+        showLoading();
+        try {
+            const res = await fetch(`/api/get-issues?phone=${currentUser.phone}&admin=${currentUser.phone === ADMIN_PHONE}`);
+            const result = await res.json();
+            if (result.success) {
+                issues = result.data;
+                renderIssuesList();
+            }
+        } catch (err) {
+            alert('加载问题失败：' + err.message);
+        } finally {
+            hideLoading();
+        }
+    }
+
+    // 渲染问题列表
+    function renderIssuesList() {
+        if (issues.length === 0) {
+            emptyState.classList.remove('hidden');
+            issuesList.innerHTML = '';
+            return;
+        }
+        emptyState.classList.add('hidden');
+        issuesList.innerHTML = '';
+        issues.forEach(issue => {
+            const areaText = getAreaText(issue.area);
+            const categoryText = getCategoryText(issue.category);
+            const priorityText = getPriorityText(issue.priority);
+            const priorityClass = getPriorityClass(issue.priority);
+            const issueCard = document.createElement('div');
+            issueCard.className = 'border border-gray-200 rounded-lg overflow-hidden transition hover:shadow-md';
+            issueCard.innerHTML = `
+                <div class="bg-gray-50 p-3 flex justify-between items-start border-b border-gray-200">
+                    <div>
+                        <span class="inline-block px-2 py-1 rounded-full text-xs font-semibold ${priorityClass}"> ${priorityText} </span>
+                        <h3 class="text-lg font-bold text-gray-800 mt-2">${areaText}</h3>
+                        <p class="text-sm text-gray-500 mt-1">${issue.timestamp}</p>
+                        ${currentUser.phone === ADMIN_PHONE ? `<p class="text-sm text-gray-500 mt-1">记录人：${issue.username} (${issue.phone})</p>` : ''}
+                    </div>
+                    <span class="text-xs text-gray-500">${categoryText}</span>
+                </div>
+                <div class="p-3">
+                    <p class="text-gray-700 mb-3">${issue.description}</p>
+                    ${issue.images.length > 0 ? `
+                        <div class="grid grid-cols-${issue.images.length > 1 ? 2 : 1} gap-2 mt-3">
+                            ${issue.images.map(img => `
+                                <img src="${img.url}" alt="${img.name}" class="w-full h-24 object-cover rounded-lg cursor-pointer hover:opacity-90" onclick="openImageModal('${img.url}')">
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                </div>
+                <div class="bg-gray-50 p-3 flex justify-between items-center border-t border-gray-200">
+                    <span class="text-sm text-gray-500">
+                        <i class="fa fa-user mr-1"></i>${issue.username}
+                    </span>
+                    <button class="delete-issue-btn text-red-600 hover:text-red-700 text-sm btn-min px-2 py-1" data-id="${issue.id}">
+                        <i class="fa fa-trash-alt mr-1"></i>删除
+                    </button>
+                </div>
+            `;
+            // 删除问题记录
+            issueCard.querySelector('.delete-issue-btn').addEventListener('click', async () => {
+                if (!confirm('确定要删除这条问题记录吗？')) return;
+                showLoading();
+                try {
+                    const res = await fetch('/api/delete-issue', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: issue.id, phone: currentUser.phone, isAdmin: currentUser.phone === ADMIN_PHONE })
+                    });
+                    const result = await res.json();
+                    if (result.success) {
+                        await loadIssues();
+                    } else {
+                        alert('删除失败：' + (result.message || '无权限'));
+                    }
+                } catch (err) {
+                    alert('删除失败：' + err.message);
+                } finally {
+                    hideLoading();
+                }
+            });
+            issuesList.appendChild(issueCard);
+        });
+    }
+
+    // 关闭成功弹窗
+    closeModalBtn.addEventListener('click', () => {
+        successModal.classList.add('hidden');
+    });
+
+    // 导出我的清单
+    exportBtn.addEventListener('click', () => {
+        const myIssues = issues.filter(i => i.phone === currentUser.phone);
+        if (myIssues.length === 0) {
+            alert('暂无问题记录，无需导出');
+            return;
+        }
+        exportToCsv(myIssues, `深圳国际美术馆验收问题清单_${currentUser.username}_${currentDate.replace(/[年月日\s,]/g, '')}.csv`);
+    });
+
+    // 管理员导出全部
+    exportAllBtn.addEventListener('click', async () => {
+        if (currentUser.phone !== ADMIN_PHONE) {
+            alert('无权限导出全部数据');
+            return;
+        }
+        showLoading();
+        try {
+            const res = await fetch('/api/export-all?adminPhone=' + currentUser.phone);
+            const blob = await res.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `深圳国际美术馆验收问题总清单_${currentDate.replace(/[年月日\s,]/g, '')}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            document.body.removeChild(a);
+        } catch (err) {
+            alert('导出失败：' + err.message);
+        } finally {
+            hideLoading();
+        }
+    });
+});
+
+// 显示/隐藏加载
+function showLoading() {
+    loadingModal.classList.remove('hidden');
+    submitBtn.classList.add('loading');
+}
+function hideLoading() {
+    loadingModal.classList.add('hidden');
+    submitBtn.classList.remove('loading');
+}
+
+// 辅助函数
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+    else return (bytes / 1048576).toFixed(1) + ' MB';
+}
+
+function getAreaText(areaCode) {
+    const areas = {
+        'lobby': '大厅',
+        'corridor': '走廊',
+        'restroom': '卫生间',
+        'elevator': '电梯厅',
+        'staircase': '楼梯间',
+        'exhibition1': '1号展厅',
+        'exhibition2': '2号展厅',
+        'exhibition3': '3号展厅',
+        'exhibition4': '4号展厅',
+        'exhibition5': '5号展厅',
+        'office': '办公区',
+        'meeting': '会议室',
+        'storage': '库房',
+        'cafe': '咖啡厅',
+        'shop': '文创商店',
+        'outdoor': '户外广场',
+        'parking': '停车场',
+        'entrance': '主入口',
+        'emergency': '应急通道'
+    };
+    return areas[areaCode] || areaCode;
+}
+
+function getCategoryText(categoryCode) {
+    const categories = {
+        'structure': '结构工程',
+        'electrical': '电气工程',
+        'plumbing': '给排水工程',
+        'hvac': '暖通空调工程',
+        'fire': '消防工程',
+        'decor': '装饰装修工程',
+        'facility': '设备设施',
+        'security': '安防系统',
+        'environment': '环境与绿化',
+        'other': '其他'
+    };
+    return categories[categoryCode] || categoryCode;
+}
+
+function getPriorityText(priorityCode) {
+    const priorities = {
+        'high': '高优先级（立即整改）',
+        'medium': '中优先级（限期整改）',
+        'low': '低优先级（后续处理）'
+    };
+    return priorities[priorityCode] || priorityCode;
+}
+
+function getPriorityClass(priorityCode) {
+    const classes = {
+        'high': 'bg-red-100 text-red-800',
+        'medium': 'bg-yellow-100 text-yellow-800',
+        'low': 'bg-green-100 text-green-800'
+    };
+    return classes[priorityCode] || 'bg-gray-100 text-gray-800';
+}
+
+// 导出CSV
+function exportToCsv(issues, fileName) {
+    let csvContent = "查验日期,查验人姓名,查验人电话,问题区域,问题类别,优先级,问题描述,图片数量,记录时间\n";
+    issues.forEach(issue => {
+        const areaText = getAreaText(issue.area);
+        const categoryText = getCategoryText(issue.category);
+        const priorityText = getPriorityText(issue.priority);
+        const row = [
+            `"${issue.date}"`,
+            `"${issue.username}"`,
+            `"${issue.phone}"`,
+            `"${areaText}"`,
+            `"${categoryText}"`,
+            `"${priorityText}"`,
+            `"${(issue.description || '').replace(/"/g, '""')}"`,
+            (issue.images || []).length,
+            `"${issue.timestamp}"`
+        ];
+        csvContent += row.join(",") + "\n";
+    });
+    const encodedUri = encodeURI("data:text/csv;charset=utf-8," + csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', fileName);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// 图片查看模态框（移动端适配）
+function openImageModal(imageUrl) {
+    const modal = document.createElement('div');
+    modal.className = 'fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-80 p-3';
+    modal.innerHTML = `
+        <div class="max-w-full max-h-[90vh] relative">
+            <img src="${imageUrl}" alt="问题照片" class="max-w-full
